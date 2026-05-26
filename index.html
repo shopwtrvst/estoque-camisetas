@@ -45,7 +45,6 @@
     overflow-x: hidden;
   }
 
-  /* ── APP SHELL ── */
   #app { max-width: 430px; margin: 0 auto; min-height: 100dvh; display: flex; flex-direction: column; }
 
   /* ── HEADER ── */
@@ -60,6 +59,10 @@
   .header-top { display: flex; align-items: center; justify-content: space-between; }
   .app-title { font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--muted); font-family: var(--mono); }
   .header-icon { width: 32px; height: 32px; background: var(--accent); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 16px; }
+  .sync-row { display: flex; align-items: center; justify-content: space-between; margin-top: 6px; }
+  #sync-status { font-size: 10px; font-family: var(--mono); letter-spacing: 0.08em; color: var(--muted); }
+  .btn-config { background: none; border: none; color: var(--muted); font-size: 11px; font-family: var(--mono); cursor: pointer; padding: 2px 6px; border-radius: 4px; }
+  .btn-config:active { background: var(--bg3); }
 
   /* ── NAV ── */
   .nav {
@@ -275,6 +278,7 @@
     transition: opacity 0.15s;
   }
   .btn-confirm:active { opacity: 0.8; }
+  .btn-confirm:disabled { opacity: 0.5; cursor: not-allowed; }
 
   .btn-voltar {
     width: 100%;
@@ -350,13 +354,67 @@
 
   select option { background: #1c2a38; }
 
-  /* Scrollbar */
   ::-webkit-scrollbar { width: 4px; }
   ::-webkit-scrollbar-track { background: transparent; }
   ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+
+  /* ── SETUP OVERLAY ── */
+  #setup-overlay {
+    position: fixed;
+    inset: 0;
+    background: var(--bg);
+    z-index: 100;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 32px 24px;
+  }
+  #setup-overlay.hidden { display: none; }
+  .setup-icon { font-size: 48px; margin-bottom: 16px; }
+  .setup-title { font-size: 20px; font-weight: 700; margin-bottom: 8px; text-align: center; }
+  .setup-sub { font-size: 13px; color: var(--muted); text-align: center; line-height: 1.6; margin-bottom: 28px; max-width: 320px; }
+  .setup-input {
+    width: 100%;
+    max-width: 360px;
+    background: var(--bg3);
+    border: 1px solid var(--border2);
+    border-radius: var(--radius-sm);
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 12px;
+    padding: 14px 16px;
+    outline: none;
+    margin-bottom: 12px;
+  }
+  .setup-input:focus { border-color: var(--accent); }
+  .setup-input::placeholder { color: var(--muted); }
+  .btn-setup {
+    width: 100%;
+    max-width: 360px;
+    padding: 16px;
+    background: var(--accent);
+    color: #0f1923;
+    border: none;
+    border-radius: var(--radius-sm);
+    font-family: var(--sans);
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  .btn-setup:active { opacity: 0.8; }
 </style>
 </head>
 <body>
+
+<!-- SETUP OVERLAY -->
+<div id="setup-overlay">
+  <div class="setup-icon">🔗</div>
+  <div class="setup-title">Conectar ao Google Sheets</div>
+  <div class="setup-sub">Cole aqui o link do seu Google Apps Script para sincronizar o estoque entre os dois celulares.</div>
+  <input class="setup-input" id="setup-url" type="url" placeholder="https://script.google.com/macros/s/...">
+  <button class="btn-setup" onclick="saveScriptUrl()">Conectar e começar</button>
+</div>
 
 <div id="app">
 
@@ -365,6 +423,10 @@
     <div class="header-top">
       <span class="app-title">Controle de Estoque</span>
       <div class="header-icon">👕</div>
+    </div>
+    <div class="sync-row">
+      <span id="sync-status">● carregando...</span>
+      <button class="btn-config" onclick="openConfig()">⚙ reconfigurar</button>
     </div>
   </div>
 
@@ -476,7 +538,7 @@
       </div>
     </div>
 
-    <button class="btn-confirm" onclick="confirmSave()">✓ Confirmar e salvar</button>
+    <button class="btn-confirm" id="btn-confirmar" onclick="confirmSave()">✓ Confirmar e salvar</button>
     <button class="btn-voltar" onclick="goTo('form')">← Voltar e corrigir</button>
   </div>
 
@@ -515,22 +577,90 @@
 const CORES = ['Branca','Preta','Azul Marinho','Cinza','Vermelha','Verde','Amarela','Rosa'];
 const TAMS = ['P','M','G','GG','XG'];
 
+let SCRIPT_URL = localStorage.getItem('est_script_url') || '';
+
 let st = {
   tipo: '',
   tamanho: '',
   movs: []
 };
 
-function loadData() {
-  try { st.movs = JSON.parse(localStorage.getItem('est_movs') || '[]'); } catch(e) { st.movs = []; }
+// ── SETUP ──
+function checkSetup() {
+  if (!SCRIPT_URL) {
+    document.getElementById('setup-overlay').classList.remove('hidden');
+  } else {
+    document.getElementById('setup-overlay').classList.add('hidden');
+    loadData();
+  }
 }
 
-function saveData() {
-  try { localStorage.setItem('est_movs', JSON.stringify(st.movs)); } catch(e) {}
+function saveScriptUrl() {
+  const url = document.getElementById('setup-url').value.trim();
+  if (!url.startsWith('https://script.google.com')) {
+    toast('URL inválida — cole o link do Apps Script', 'error');
+    return;
+  }
+  SCRIPT_URL = url;
+  localStorage.setItem('est_script_url', url);
+  document.getElementById('setup-overlay').classList.add('hidden');
+  loadData();
 }
 
-loadData();
+function openConfig() {
+  document.getElementById('setup-url').value = SCRIPT_URL;
+  document.getElementById('setup-overlay').classList.remove('hidden');
+}
 
+// ── SYNC STATUS ──
+function setSyncStatus(status) {
+  const el = document.getElementById('sync-status');
+  if (status === 'syncing') {
+    el.textContent = '↻ sincronizando...';
+    el.style.color = 'var(--warn)';
+  } else if (status === 'ok') {
+    el.textContent = '● online';
+    el.style.color = 'var(--entrada)';
+  } else {
+    el.textContent = '○ offline — dados locais';
+    el.style.color = 'var(--saida)';
+  }
+}
+
+// ── DATA ──
+async function loadData() {
+  setSyncStatus('syncing');
+  try {
+    const res = await fetch(`${SCRIPT_URL}?action=read`);
+    const json = await res.json();
+    if (json.ok) {
+      st.movs = json.movs;
+      localStorage.setItem('est_movs_cache', JSON.stringify(st.movs));
+      setSyncStatus('ok');
+    } else {
+      throw new Error('Resposta inválida');
+    }
+  } catch(e) {
+    try { st.movs = JSON.parse(localStorage.getItem('est_movs_cache') || '[]'); } catch(e2) { st.movs = []; }
+    setSyncStatus('offline');
+  }
+  renderPainel();
+}
+
+async function addMovRemote(mov) {
+  const url = `${SCRIPT_URL}?action=add&mov=${encodeURIComponent(JSON.stringify(mov))}`;
+  const res = await fetch(url);
+  const json = await res.json();
+  if (!json.ok) throw new Error('Falha ao salvar');
+}
+
+async function clearRemote() {
+  const res = await fetch(`${SCRIPT_URL}?action=clear`);
+  const json = await res.json();
+  if (!json.ok) throw new Error('Falha ao limpar');
+}
+
+// ── NAVIGATION ──
 function goTo(s) {
   document.querySelectorAll('.screen').forEach(el => el.classList.remove('active'));
   document.querySelectorAll('.nav-btn').forEach(el => el.classList.remove('active'));
@@ -538,7 +668,7 @@ function goTo(s) {
   const navId = 'nav-' + (s === 'confirm' ? 'form' : s);
   const navEl = document.getElementById(navId);
   if (navEl) navEl.classList.add('active');
-  if (s === 'painel') renderPainel();
+  if (s === 'painel') { loadData(); }
   if (s === 'hist') renderHist();
 }
 
@@ -562,6 +692,7 @@ function toast(msg, type) {
   window._toastTimer = setTimeout(() => { el.className = ''; }, 3000);
 }
 
+// ── SALDO ──
 function calcSaldo(cor, tam) {
   return st.movs.reduce((acc, m) => {
     if (m.cor !== cor || m.tam !== tam) return acc;
@@ -569,6 +700,7 @@ function calcSaldo(cor, tam) {
   }, 0);
 }
 
+// ── PAINEL ──
 function renderPainel() {
   const cor = document.getElementById('painel-cor').value;
   let total = 0;
@@ -583,7 +715,6 @@ function renderPainel() {
   }).join('');
   document.getElementById('painel-total').textContent = total;
 
-  // Resumo geral
   const resumoEl = document.getElementById('resumo-geral');
   const linhas = CORES.map(cor => {
     const tot = TAMS.reduce((a, t) => a + calcSaldo(cor, t), 0);
@@ -599,6 +730,7 @@ function renderPainel() {
     : '<p style="font-size:13px;color:var(--muted);padding:8px 0;">Nenhum estoque registrado ainda.</p>';
 }
 
+// ── FORM ──
 function showConfirm() {
   const cor = document.getElementById('form-cor').value;
   const qtd = parseInt(document.getElementById('form-qtd').value) || 0;
@@ -634,18 +766,39 @@ function showConfirm() {
   goTo('confirm');
 }
 
-function confirmSave() {
+async function confirmSave() {
+  const btn = document.getElementById('btn-confirmar');
   const cor = document.getElementById('form-cor').value;
   const qtd = parseInt(document.getElementById('form-qtd').value) || 0;
   const obs = document.getElementById('form-obs').value.trim();
   const now = new Date();
 
-  st.movs.unshift({
+  const mov = {
     tipo: st.tipo, cor, tam: st.tamanho, qtd, obs,
     dt: now.toLocaleDateString('pt-BR'),
     ts: now.getTime()
-  });
-  saveData();
+  };
+
+  btn.disabled = true;
+  btn.textContent = '↻ Salvando...';
+  setSyncStatus('syncing');
+
+  try {
+    await addMovRemote(mov);
+    st.movs.unshift(mov);
+    localStorage.setItem('est_movs_cache', JSON.stringify(st.movs));
+    setSyncStatus('ok');
+    toast('Movimento salvo!', 'success');
+  } catch(e) {
+    // Save locally as fallback
+    st.movs.unshift(mov);
+    localStorage.setItem('est_movs_cache', JSON.stringify(st.movs));
+    setSyncStatus('offline');
+    toast('Salvo localmente (sem conexão)', 'error');
+  }
+
+  btn.disabled = false;
+  btn.textContent = '✓ Confirmar e salvar';
 
   // reset form
   document.getElementById('form-cor').value = '';
@@ -657,9 +810,9 @@ function confirmSave() {
   document.querySelectorAll('.tam-sel-btn').forEach(b => b.classList.remove('selected'));
 
   goTo('painel');
-  toast('Movimento salvo!', 'success');
 }
 
+// ── HISTÓRICO ──
 function renderHist() {
   const listEl = document.getElementById('hist-list');
   document.getElementById('hist-count').textContent = `${st.movs.length} registro${st.movs.length !== 1 ? 's' : ''}`;
@@ -682,21 +835,30 @@ function renderHist() {
     </div>`).join('');
 }
 
-function clearHist() {
+async function clearHist() {
   if (!st.movs.length) return;
   if (!confirm('Apagar todo o histórico? Não é possível desfazer.')) return;
-  st.movs = [];
-  saveData();
+
+  setSyncStatus('syncing');
+  try {
+    await clearRemote();
+    st.movs = [];
+    localStorage.setItem('est_movs_cache', '[]');
+    setSyncStatus('ok');
+    toast('Histórico apagado', 'success');
+  } catch(e) {
+    setSyncStatus('offline');
+    toast('Erro ao limpar — verifique a conexão', 'error');
+  }
   renderHist();
-  toast('Histórico apagado', 'success');
 }
 
-// SW registration
+// SW
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('sw.js').catch(() => {});
 }
 
-renderPainel();
+checkSetup();
 </script>
 </body>
 </html>
