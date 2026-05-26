@@ -1,0 +1,702 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#0f1923">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Estoque">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>Estoque de Camisetas</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0f1923;
+    --bg2: #161f2b;
+    --bg3: #1c2a38;
+    --border: rgba(255,255,255,0.08);
+    --border2: rgba(255,255,255,0.15);
+    --text: #e8edf2;
+    --muted: #7a8fa3;
+    --accent: #00d4aa;
+    --accent2: #0099ff;
+    --entrada: #00c97a;
+    --entrada-bg: rgba(0,201,122,0.1);
+    --saida: #ff5e6c;
+    --saida-bg: rgba(255,94,108,0.1);
+    --warn: #f5a623;
+    --radius: 14px;
+    --radius-sm: 8px;
+    --mono: 'DM Mono', monospace;
+    --sans: 'Syne', sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    min-height: 100dvh;
+    overflow-x: hidden;
+  }
+
+  /* ── APP SHELL ── */
+  #app { max-width: 430px; margin: 0 auto; min-height: 100dvh; display: flex; flex-direction: column; }
+
+  /* ── HEADER ── */
+  .header {
+    padding: 52px 20px 16px;
+    background: var(--bg);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    border-bottom: 1px solid var(--border);
+  }
+  .header-top { display: flex; align-items: center; justify-content: space-between; }
+  .app-title { font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--muted); font-family: var(--mono); }
+  .header-icon { width: 32px; height: 32px; background: var(--accent); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 16px; }
+
+  /* ── NAV ── */
+  .nav {
+    display: flex;
+    background: var(--bg);
+    border-top: 1px solid var(--border);
+    position: sticky;
+    bottom: 0;
+    z-index: 10;
+  }
+  .nav-btn {
+    flex: 1;
+    padding: 12px 4px 16px;
+    background: none;
+    border: none;
+    color: var(--muted);
+    font-family: var(--sans);
+    font-size: 10px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+    transition: color 0.2s;
+  }
+  .nav-btn svg { width: 20px; height: 20px; }
+  .nav-btn.active { color: var(--accent); }
+  .nav-btn.active .nav-dot { background: var(--accent); }
+  .nav-dot { width: 4px; height: 4px; border-radius: 50%; background: transparent; margin-top: 2px; }
+
+  /* ── SCREENS ── */
+  .screen { display: none; flex: 1; overflow-y: auto; padding: 20px; padding-bottom: 24px; }
+  .screen.active { display: block; }
+
+  /* ── CARDS ── */
+  .card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+    margin-bottom: 12px;
+  }
+  .card-label { font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); font-family: var(--mono); margin-bottom: 10px; }
+
+  /* ── PAINEL ── */
+  .painel-select {
+    width: 100%;
+    background: var(--bg3);
+    border: 1px solid var(--border2);
+    border-radius: var(--radius-sm);
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 15px;
+    padding: 12px 14px;
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%237a8fa3' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 14px center;
+    margin-bottom: 16px;
+  }
+  .tam-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-bottom: 12px; }
+  .tam-card {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 14px 6px;
+    text-align: center;
+  }
+  .tam-label { font-size: 10px; color: var(--muted); font-family: var(--mono); letter-spacing: 0.1em; margin-bottom: 6px; }
+  .tam-num { font-size: 24px; font-weight: 700; line-height: 1; }
+  .tam-num.zero { color: var(--muted); }
+  .tam-num.low { color: var(--saida); }
+  .tam-num.ok { color: var(--accent); }
+
+  .total-row {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 14px 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .total-label { font-size: 11px; color: var(--muted); letter-spacing: 0.1em; text-transform: uppercase; font-family: var(--mono); }
+  .total-num { font-size: 28px; font-weight: 800; color: var(--accent); font-family: var(--mono); }
+
+  /* ── FORM ── */
+  .field-label { font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); font-family: var(--mono); margin-bottom: 8px; display: block; }
+  .field { margin-bottom: 20px; }
+
+  .tipo-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .tipo-btn {
+    padding: 16px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+    background: var(--bg3);
+    color: var(--muted);
+    font-family: var(--sans);
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: all 0.15s;
+  }
+  .tipo-btn.entrada.selected { background: var(--entrada-bg); border-color: var(--entrada); color: var(--entrada); }
+  .tipo-btn.saida.selected { background: var(--saida-bg); border-color: var(--saida); color: var(--saida); }
+
+  .tam-select-row { display: flex; gap: 8px; }
+  .tam-sel-btn {
+    flex: 1;
+    padding: 12px 4px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+    background: var(--bg3);
+    color: var(--muted);
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    text-align: center;
+    transition: all 0.15s;
+  }
+  .tam-sel-btn.selected { background: rgba(0,212,170,0.12); border-color: var(--accent); color: var(--accent); }
+
+  .form-input {
+    width: 100%;
+    background: var(--bg3);
+    border: 1px solid var(--border2);
+    border-radius: var(--radius-sm);
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 20px;
+    font-weight: 500;
+    padding: 14px 16px;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  .form-input:focus { border-color: var(--accent); }
+  .form-input::placeholder { color: var(--muted); font-size: 15px; }
+
+  .form-input-sm {
+    width: 100%;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 15px;
+    padding: 12px 14px;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  .form-input-sm:focus { border-color: var(--accent); }
+  .form-input-sm::placeholder { color: var(--muted); }
+
+  .btn-revisar {
+    width: 100%;
+    padding: 16px;
+    background: var(--accent);
+    color: #0f1923;
+    border: none;
+    border-radius: var(--radius-sm);
+    font-family: var(--sans);
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    cursor: pointer;
+    transition: opacity 0.15s;
+    margin-top: 4px;
+  }
+  .btn-revisar:active { opacity: 0.8; }
+
+  /* ── CONFIRM ── */
+  .confirm-card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    margin-bottom: 16px;
+  }
+  .confirm-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 13px 16px;
+    border-bottom: 1px solid var(--border);
+  }
+  .confirm-row:last-child { border-bottom: none; }
+  .confirm-key { font-size: 12px; color: var(--muted); font-family: var(--mono); letter-spacing: 0.08em; }
+  .confirm-val { font-size: 14px; font-weight: 500; }
+
+  .badge-entrada { background: var(--entrada-bg); color: var(--entrada); padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 500; font-family: var(--mono); }
+  .badge-saida { background: var(--saida-bg); color: var(--saida); padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 500; font-family: var(--mono); }
+
+  .btn-confirm {
+    width: 100%;
+    padding: 16px;
+    background: var(--entrada);
+    color: #0a1a0f;
+    border: none;
+    border-radius: var(--radius-sm);
+    font-family: var(--sans);
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    margin-bottom: 10px;
+    transition: opacity 0.15s;
+  }
+  .btn-confirm:active { opacity: 0.8; }
+
+  .btn-voltar {
+    width: 100%;
+    padding: 14px;
+    background: transparent;
+    color: var(--muted);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-family: var(--sans);
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .btn-voltar:active { background: var(--bg3); }
+
+  /* ── HISTÓRICO ── */
+  .hist-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+  .hist-count { font-size: 12px; color: var(--muted); font-family: var(--mono); }
+  .btn-clear { background: none; border: none; color: var(--saida); font-size: 12px; font-family: var(--sans); cursor: pointer; padding: 4px 8px; border-radius: 6px; }
+
+  .hist-item {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 12px 14px;
+    margin-bottom: 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+  }
+  .hist-left { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+  .hist-info { font-size: 14px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .hist-obs { font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .hist-right { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; flex-shrink: 0; }
+  .hist-qtd { font-family: var(--mono); font-size: 16px; font-weight: 500; }
+  .hist-qtd.pos { color: var(--entrada); }
+  .hist-qtd.neg { color: var(--saida); }
+  .hist-date { font-size: 11px; color: var(--muted); font-family: var(--mono); }
+
+  /* ── TOAST ── */
+  #toast {
+    position: fixed;
+    top: 60px;
+    left: 50%;
+    transform: translateX(-50%) translateY(-20px);
+    background: var(--bg3);
+    border: 1px solid var(--border2);
+    color: var(--text);
+    padding: 12px 20px;
+    border-radius: 30px;
+    font-size: 13px;
+    font-family: var(--mono);
+    white-space: nowrap;
+    opacity: 0;
+    transition: all 0.25s;
+    z-index: 999;
+    pointer-events: none;
+    max-width: 90vw;
+  }
+  #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  #toast.success { border-color: var(--entrada); color: var(--entrada); }
+  #toast.error { border-color: var(--saida); color: var(--saida); }
+
+  .empty-state {
+    text-align: center;
+    padding: 48px 24px;
+    color: var(--muted);
+    font-size: 14px;
+    line-height: 1.6;
+  }
+  .empty-icon { font-size: 40px; margin-bottom: 12px; }
+
+  select option { background: #1c2a38; }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+</style>
+</head>
+<body>
+
+<div id="app">
+
+  <!-- HEADER -->
+  <div class="header">
+    <div class="header-top">
+      <span class="app-title">Controle de Estoque</span>
+      <div class="header-icon">👕</div>
+    </div>
+  </div>
+
+  <!-- SCREENS -->
+
+  <!-- PAINEL -->
+  <div id="screen-painel" class="screen active">
+    <div class="card">
+      <div class="card-label">Cor selecionada</div>
+      <select class="painel-select" id="painel-cor" onchange="renderPainel()">
+        <option>Branca</option>
+        <option>Preta</option>
+        <option>Azul Marinho</option>
+        <option>Cinza</option>
+        <option>Vermelha</option>
+        <option>Verde</option>
+        <option>Amarela</option>
+        <option>Rosa</option>
+      </select>
+      <div class="tam-grid" id="painel-grid"></div>
+      <div class="total-row">
+        <span class="total-label">Total em estoque</span>
+        <span class="total-num" id="painel-total">0</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-label">Resumo geral — todas as cores</div>
+      <div id="resumo-geral"></div>
+    </div>
+  </div>
+
+  <!-- FORM -->
+  <div id="screen-form" class="screen">
+    <div class="field">
+      <span class="field-label">Tipo de movimento</span>
+      <div class="tipo-row">
+        <button id="btn-entrada" class="tipo-btn entrada" onclick="selectTipo('Entrada')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
+          Entrada
+        </button>
+        <button id="btn-saida" class="tipo-btn saida" onclick="selectTipo('Saída')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><path d="M12 5v14M5 12l7 7 7-7"/></svg>
+          Saída
+        </button>
+      </div>
+    </div>
+
+    <div class="field">
+      <span class="field-label">Cor</span>
+      <select class="painel-select" id="form-cor" style="margin-bottom:0">
+        <option value="">Selecione a cor...</option>
+        <option>Branca</option><option>Preta</option><option>Azul Marinho</option>
+        <option>Cinza</option><option>Vermelha</option><option>Verde</option>
+        <option>Amarela</option><option>Rosa</option>
+      </select>
+    </div>
+
+    <div class="field">
+      <span class="field-label">Tamanho</span>
+      <div class="tam-select-row">
+        <button class="tam-sel-btn" onclick="selectTam(this,'P')">P</button>
+        <button class="tam-sel-btn" onclick="selectTam(this,'M')">M</button>
+        <button class="tam-sel-btn" onclick="selectTam(this,'G')">G</button>
+        <button class="tam-sel-btn" onclick="selectTam(this,'GG')">GG</button>
+        <button class="tam-sel-btn" onclick="selectTam(this,'XG')">XG</button>
+      </div>
+    </div>
+
+    <div class="field">
+      <span class="field-label">Quantidade</span>
+      <input class="form-input" type="number" id="form-qtd" min="1" placeholder="0" inputmode="numeric">
+    </div>
+
+    <div class="field">
+      <span class="field-label">Observação (opcional)</span>
+      <input class="form-input-sm" type="text" id="form-obs" placeholder="Ex: Compra fornecedor ABC">
+    </div>
+
+    <button class="btn-revisar" onclick="showConfirm()">
+      Revisar antes de confirmar →
+    </button>
+  </div>
+
+  <!-- CONFIRM -->
+  <div id="screen-confirm" class="screen">
+    <p style="font-size:13px;color:var(--muted);margin-bottom:16px;font-family:var(--mono);">Confira os dados antes de salvar:</p>
+
+    <div class="confirm-card">
+      <div class="confirm-row">
+        <span class="confirm-key">tipo</span>
+        <span id="c-tipo" class="confirm-val"></span>
+      </div>
+      <div class="confirm-row">
+        <span class="confirm-key">cor</span>
+        <span id="c-cor" class="confirm-val"></span>
+      </div>
+      <div class="confirm-row">
+        <span class="confirm-key">tamanho</span>
+        <span id="c-tam" class="confirm-val" style="font-family:var(--mono);font-size:18px;font-weight:700;"></span>
+      </div>
+      <div class="confirm-row">
+        <span class="confirm-key">quantidade</span>
+        <span id="c-qtd" class="confirm-val" style="font-family:var(--mono);font-size:20px;font-weight:700;"></span>
+      </div>
+      <div class="confirm-row" id="c-obs-row">
+        <span class="confirm-key">obs.</span>
+        <span id="c-obs" class="confirm-val" style="font-size:13px;max-width:60%;text-align:right;"></span>
+      </div>
+    </div>
+
+    <button class="btn-confirm" onclick="confirmSave()">✓ Confirmar e salvar</button>
+    <button class="btn-voltar" onclick="goTo('form')">← Voltar e corrigir</button>
+  </div>
+
+  <!-- HISTÓRICO -->
+  <div id="screen-hist" class="screen">
+    <div class="hist-header">
+      <span class="hist-count" id="hist-count">0 registros</span>
+      <button class="btn-clear" onclick="clearHist()">🗑 Limpar tudo</button>
+    </div>
+    <div id="hist-list"></div>
+  </div>
+
+  <!-- NAV -->
+  <nav class="nav">
+    <button class="nav-btn active" onclick="goTo('painel')" id="nav-painel">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+      Painel
+      <div class="nav-dot"></div>
+    </button>
+    <button class="nav-btn" onclick="goTo('form')" id="nav-form">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg>
+      Registrar
+      <div class="nav-dot"></div>
+    </button>
+    <button class="nav-btn" onclick="goTo('hist')" id="nav-hist">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 8v4l3 3"/><circle cx="12" cy="12" r="9"/></svg>
+      Histórico
+      <div class="nav-dot"></div>
+    </button>
+  </nav>
+</div>
+
+<div id="toast"></div>
+
+<script>
+const CORES = ['Branca','Preta','Azul Marinho','Cinza','Vermelha','Verde','Amarela','Rosa'];
+const TAMS = ['P','M','G','GG','XG'];
+
+let st = {
+  tipo: '',
+  tamanho: '',
+  movs: []
+};
+
+function loadData() {
+  try { st.movs = JSON.parse(localStorage.getItem('est_movs') || '[]'); } catch(e) { st.movs = []; }
+}
+
+function saveData() {
+  try { localStorage.setItem('est_movs', JSON.stringify(st.movs)); } catch(e) {}
+}
+
+loadData();
+
+function goTo(s) {
+  document.querySelectorAll('.screen').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(el => el.classList.remove('active'));
+  document.getElementById('screen-' + s).classList.add('active');
+  const navId = 'nav-' + (s === 'confirm' ? 'form' : s);
+  const navEl = document.getElementById(navId);
+  if (navEl) navEl.classList.add('active');
+  if (s === 'painel') renderPainel();
+  if (s === 'hist') renderHist();
+}
+
+function selectTipo(t) {
+  st.tipo = t;
+  document.getElementById('btn-entrada').classList.toggle('selected', t === 'Entrada');
+  document.getElementById('btn-saida').classList.toggle('selected', t === 'Saída');
+}
+
+function selectTam(btn, t) {
+  st.tamanho = t;
+  document.querySelectorAll('.tam-sel-btn').forEach(b => b.classList.remove('selected'));
+  btn.classList.add('selected');
+}
+
+function toast(msg, type) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'show ' + (type || '');
+  clearTimeout(window._toastTimer);
+  window._toastTimer = setTimeout(() => { el.className = ''; }, 3000);
+}
+
+function calcSaldo(cor, tam) {
+  return st.movs.reduce((acc, m) => {
+    if (m.cor !== cor || m.tam !== tam) return acc;
+    return acc + (m.tipo === 'Entrada' ? m.qtd : -m.qtd);
+  }, 0);
+}
+
+function renderPainel() {
+  const cor = document.getElementById('painel-cor').value;
+  let total = 0;
+  document.getElementById('painel-grid').innerHTML = TAMS.map(t => {
+    const s = calcSaldo(cor, t);
+    total += s;
+    const cls = s === 0 ? 'zero' : s <= 3 ? 'low' : 'ok';
+    return `<div class="tam-card">
+      <div class="tam-label">${t}</div>
+      <div class="tam-num ${cls}">${s}</div>
+    </div>`;
+  }).join('');
+  document.getElementById('painel-total').textContent = total;
+
+  // Resumo geral
+  const resumoEl = document.getElementById('resumo-geral');
+  const linhas = CORES.map(cor => {
+    const tot = TAMS.reduce((a, t) => a + calcSaldo(cor, t), 0);
+    if (tot === 0) return null;
+    return `<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);">
+      <span style="font-size:13px;">${cor}</span>
+      <span style="font-family:var(--mono);font-size:14px;color:var(--accent);">${tot}</span>
+    </div>`;
+  }).filter(Boolean);
+
+  resumoEl.innerHTML = linhas.length
+    ? linhas.join('')
+    : '<p style="font-size:13px;color:var(--muted);padding:8px 0;">Nenhum estoque registrado ainda.</p>';
+}
+
+function showConfirm() {
+  const cor = document.getElementById('form-cor').value;
+  const qtd = parseInt(document.getElementById('form-qtd').value) || 0;
+  const obs = document.getElementById('form-obs').value.trim();
+
+  if (!st.tipo) return toast('Selecione Entrada ou Saída', 'error');
+  if (!cor) return toast('Selecione a cor', 'error');
+  if (!st.tamanho) return toast('Selecione o tamanho', 'error');
+  if (!qtd || qtd < 1) return toast('Informe uma quantidade válida', 'error');
+
+  if (st.tipo === 'Saída') {
+    const saldo = calcSaldo(cor, st.tamanho);
+    if (qtd > saldo) return toast(`Saldo insuficiente! Estoque atual: ${saldo}`, 'error');
+  }
+
+  const badge = st.tipo === 'Entrada'
+    ? '<span class="badge-entrada">↑ Entrada</span>'
+    : '<span class="badge-saida">↓ Saída</span>';
+
+  document.getElementById('c-tipo').innerHTML = badge;
+  document.getElementById('c-cor').textContent = cor;
+  document.getElementById('c-tam').textContent = st.tamanho;
+  document.getElementById('c-qtd').textContent = qtd;
+
+  const obsRow = document.getElementById('c-obs-row');
+  if (obs) {
+    document.getElementById('c-obs').textContent = obs;
+    obsRow.style.display = 'flex';
+  } else {
+    obsRow.style.display = 'none';
+  }
+
+  goTo('confirm');
+}
+
+function confirmSave() {
+  const cor = document.getElementById('form-cor').value;
+  const qtd = parseInt(document.getElementById('form-qtd').value) || 0;
+  const obs = document.getElementById('form-obs').value.trim();
+  const now = new Date();
+
+  st.movs.unshift({
+    tipo: st.tipo, cor, tam: st.tamanho, qtd, obs,
+    dt: now.toLocaleDateString('pt-BR'),
+    ts: now.getTime()
+  });
+  saveData();
+
+  // reset form
+  document.getElementById('form-cor').value = '';
+  document.getElementById('form-qtd').value = '';
+  document.getElementById('form-obs').value = '';
+  st.tipo = ''; st.tamanho = '';
+  document.getElementById('btn-entrada').classList.remove('selected');
+  document.getElementById('btn-saida').classList.remove('selected');
+  document.querySelectorAll('.tam-sel-btn').forEach(b => b.classList.remove('selected'));
+
+  goTo('painel');
+  toast('Movimento salvo!', 'success');
+}
+
+function renderHist() {
+  const listEl = document.getElementById('hist-list');
+  document.getElementById('hist-count').textContent = `${st.movs.length} registro${st.movs.length !== 1 ? 's' : ''}`;
+
+  if (!st.movs.length) {
+    listEl.innerHTML = '<div class="empty-state"><div class="empty-icon">📋</div>Nenhum registro ainda.<br>Registre entradas e saídas na aba Registrar.</div>';
+    return;
+  }
+
+  listEl.innerHTML = st.movs.slice(0, 50).map(m => `
+    <div class="hist-item">
+      <div class="hist-left">
+        <div class="hist-info">${m.cor} · ${m.tam}</div>
+        ${m.obs ? `<div class="hist-obs">${m.obs}</div>` : `<div class="hist-obs">${m.tipo}</div>`}
+      </div>
+      <div class="hist-right">
+        <span class="hist-qtd ${m.tipo === 'Entrada' ? 'pos' : 'neg'}">${m.tipo === 'Entrada' ? '+' : '−'}${m.qtd}</span>
+        <span class="hist-date">${m.dt}</span>
+      </div>
+    </div>`).join('');
+}
+
+function clearHist() {
+  if (!st.movs.length) return;
+  if (!confirm('Apagar todo o histórico? Não é possível desfazer.')) return;
+  st.movs = [];
+  saveData();
+  renderHist();
+  toast('Histórico apagado', 'success');
+}
+
+// SW registration
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').catch(() => {});
+}
+
+renderPainel();
+</script>
+</body>
+</html>
